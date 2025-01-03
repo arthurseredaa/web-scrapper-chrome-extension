@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Chrome Extension</title>
+    <link rel="stylesheet" type="text/css" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Web Scraper</h1>
+      <div id="content">
+        <div class="selectors-container">
+          <div class="selector-group">
+            <input
+              type="text"
+              class="selector-input"
+              placeholder="Base selector (e.g. .user-card)"
+            />
+            <div class="field-selectors">
+              <div class="field-row">
+                <input
+                  type="text"
+                  placeholder="Field name"
+                  class="field-name"
+                />
+                <input
+                  type="text"
+                  placeholder="Relative selector"
+                  class="field-selector"
+                />
+                <button class="remove-field">×</button>
+              </div>
+            </div>
+            <button class="add-field">+ Add Field</button>
+          </div>
+          <button id="parseButton">Parse Data</button>
+        </div>
+        <div id="result" class="result-area">
+          <div id="status" class="status"></div>
+          <div id="stats" class="stats"></div>
+          <div class="download-buttons">
+            <button id="downloadCsv" class="download-btn" disabled>CSV</button>
+            <button id="downloadJson" class="download-btn" disabled>
+              JSON
+            </button>
+            <button id="downloadExcel" class="download-btn" disabled>
+              Excel
+            </button>
+          </div>
+          <div id="parsed-data" class="parsed-data">
+            <table id="results-table" class="results-table">
+              <thead>
+                <tr id="table-headers">
+                  <!-- Headers will be added dynamically -->
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
