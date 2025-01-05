@@ -127,6 +127,27 @@ h1 {
   border-radius: 4px;
 }
 
+.selection-mode,
+.remove-field {
+  padding: 0 10px;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.selection-mode {
+  background: #2196f3;
+}
+
+.remove-field {
+  background: #ff4444;
+}
+
+.selection-mode:hover {
+  background-color: #1976d2;
+}
+
 .field-selectors {
   margin: 10px 0;
 }
@@ -150,15 +171,6 @@ h1 {
 
 .field-selector {
   width: 60%;
-}
-
-.remove-field {
-  padding: 0 10px;
-  background: #ff4444;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
 }
 
 .add-field {
