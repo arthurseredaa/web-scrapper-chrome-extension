@@ -127,7 +127,6 @@ h1 {
   border-radius: 4px;
 }
 
-.selection-mode,
 .remove-field {
   padding: 0 10px;
   color: white;
@@ -136,16 +135,8 @@ h1 {
   cursor: pointer;
 }
 
-.selection-mode {
-  background: #2196f3;
-}
-
 .remove-field {
   background: #ff4444;
-}
-
-.selection-mode:hover {
-  background-color: #1976d2;
 }
 
 .field-selectors {

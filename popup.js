@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   let currentData = null;
   let currentFields = null;
+  let activePickerInput = null;
+  let lastPickedSelector = null;
 
   // Utility Functions
   function showMessage(message, isError = false) {
@@ -24,18 +26,31 @@ document.addEventListener('DOMContentLoaded', function () {
     statsElement.textContent = stats;
   }
 
-  async function injectContentScriptIfNeeded(tabId) {
+  async function injectScripts(tabId) {
     try {
-      await chrome.scripting.executeScript({
+      // Check if scripts are already injected
+      const results = await chrome.scripting.executeScript({
         target: { tabId },
-        files: ['content.js'],
+        func: () => window.isPickingElementInitialized,
       });
+
+      if (!results[0].result) {
+        // Inject picker.js first
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          files: ['picker.js'],
+        });
+
+        // Then inject content.js
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          files: ['content.js'],
+        });
+      }
     } catch (error) {
-      showMessage('Error injecting content script', true);
-      console.log(
-        'Content script already injected or injection failed:',
-        error
-      );
+      showMessage('Error injecting scripts', true);
+      console.error('Script injection failed:', error);
+      throw error;
     }
   }
 
@@ -45,14 +60,32 @@ document.addEventListener('DOMContentLoaded', function () {
     fieldRow.className = 'field-row';
     fieldRow.innerHTML = `
       <input type="text" placeholder="Field name" class="field-name" />
-      <input type="text" placeholder="Relative selector" class="field-selector" />
+      <input type="text" placeholder="Selector" class="field-selector" />
       <button class="remove-field">Remove</button>
     `;
     fieldSelectors.appendChild(fieldRow);
 
-    fieldRow.querySelector('.remove-field').addEventListener('click', () => {
-      fieldRow.remove();
-    });
+    // Add remove functionality
+    const removeButton = fieldRow.querySelector('.remove-field');
+    if (removeButton) {
+      removeButton.addEventListener('click', () => {
+        fieldRow.remove();
+        saveState();
+      });
+    }
+
+    // Add change listeners to inputs
+    const fieldName = fieldRow.querySelector('.field-name');
+    const fieldSelector = fieldRow.querySelector('.field-selector');
+
+    if (fieldName) {
+      fieldName.addEventListener('change', saveState);
+    }
+    if (fieldSelector) {
+      fieldSelector.addEventListener('change', saveState);
+    }
+
+    return fieldRow;
   }
 
   function getSelectors() {
@@ -176,7 +209,10 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // Event Listeners
-  document.querySelector('.add-field').addEventListener('click', addFieldRow);
+  document.querySelector('.add-field').addEventListener('click', () => {
+    addFieldRow();
+    saveState();
+  });
 
   parseButton.addEventListener('click', async () => {
     const { baseSelector, fields } = getSelectors();
@@ -201,7 +237,8 @@ document.addEventListener('DOMContentLoaded', function () {
         currentWindow: true,
       });
 
-      await injectContentScriptIfNeeded(tab.id);
+      // Use new injection function
+      await injectScripts(tab.id);
 
       chrome.tabs.sendMessage(
         tab.id,
@@ -233,7 +270,183 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
+  // Add function to save state
+  async function saveState() {
+    const state = {
+      baseSelector: document.querySelector('.selector-input').value,
+      fields: Array.from(document.querySelectorAll('.field-row')).map(
+        (row) => ({
+          name: row.querySelector('.field-name').value,
+          selector: row.querySelector('.field-selector').value,
+        })
+      ),
+    };
+    await chrome.storage.local.set({ scraperState: state });
+  }
+
+  // Add function to restore state
+  async function restoreState() {
+    const { scraperState } = await chrome.storage.local.get('scraperState');
+    if (scraperState) {
+      // Restore base selector
+      const baseSelectorInput = document.querySelector('.selector-input');
+      if (baseSelectorInput) {
+        baseSelectorInput.value = scraperState.baseSelector || '';
+      }
+
+      // Clear existing fields
+      fieldSelectors.innerHTML = '';
+
+      // Restore fields
+      if (scraperState.fields && scraperState.fields.length > 0) {
+        scraperState.fields.forEach((field) => {
+          const fieldRow = addFieldRow();
+          const nameInput = fieldRow.querySelector('.field-name');
+          const selectorInput = fieldRow.querySelector('.field-selector');
+
+          if (nameInput) nameInput.value = field.name;
+          if (selectorInput) selectorInput.value = field.selector;
+        });
+      } else {
+        addFieldRow();
+      }
+    } else {
+      addFieldRow();
+    }
+
+    // Initialize all picker buttons after restoring state
+    initializePickerButtons();
+  }
+
+  // Modify startElementPicker to ensure scripts are injected
+  async function startElementPicker(inputElement) {
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+
+      // Get base selector if we're picking a field selector
+      const isFieldSelector = inputElement.classList.contains('field-selector');
+      const baseSelectorInput = document.querySelector('.selector-input');
+      const baseSelector = isFieldSelector
+        ? baseSelectorInput.value.trim()
+        : null;
+
+      // Validate base selector if picking a field
+      if (isFieldSelector && !baseSelector) {
+        showMessage('Please select base element first', true);
+        return;
+      }
+
+      // Inject scripts before starting picker
+      await injectScripts(tab.id);
+
+      // Store which input is waiting for the selector
+      activePickerInput = inputElement;
+
+      // Store input identifier for later
+      await chrome.storage.local.set({
+        activePickerData: {
+          isBaseSelector: inputElement === baseSelectorInput,
+          fieldIndex: Array.from(
+            document.querySelectorAll('.field-selector')
+          ).indexOf(inputElement),
+        },
+      });
+
+      // Minimize the popup
+      document.body.style.display = 'none';
+
+      // Start the picker in content script with base selector if available
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'startPicking',
+        baseSelector: baseSelector,
+      });
+    } catch (error) {
+      showMessage('Error starting element picker', true);
+      console.error('Picker error:', error);
+      // Restore popup visibility in case of error
+      document.body.style.display = 'block';
+    }
+  }
+
+  // Modify the element selected listener
+  chrome.runtime.onMessage.addListener(
+    async (request, sender, sendResponse) => {
+      if (request.action === 'elementSelected') {
+        const { activePickerData } = await chrome.storage.local.get(
+          'activePickerData'
+        );
+
+        if (activePickerData) {
+          if (activePickerData.isBaseSelector) {
+            document.querySelector('.selector-input').value = request.selector;
+          } else if (activePickerData.fieldIndex >= 0) {
+            const selectorInputs = document.querySelectorAll('.field-selector');
+            if (selectorInputs[activePickerData.fieldIndex]) {
+              selectorInputs[activePickerData.fieldIndex].value =
+                request.selector;
+            }
+          }
+
+          // Clear stored picker data
+          chrome.storage.local.remove('activePickerData');
+
+          // Save the new state
+          saveState();
+        }
+
+        // Restore popup
+        document.body.style.display = 'block';
+      }
+    }
+  );
+
+  // Add change listener to base selector
+  document
+    .querySelector('.selector-input')
+    .addEventListener('change', saveState);
+
   // Initialize
-  addFieldRow();
+  restoreState();
   enableDownloadButtons(false);
+
+  // Add event listener for the add field button
+  const addFieldButton = document.querySelector('.add-field');
+  if (addFieldButton) {
+    addFieldButton.addEventListener('click', () => {
+      const newRow = addFieldRow();
+      initializePickerButtons(); // Reinitialize all picker buttons
+      saveState();
+    });
+  }
+
+  // Add this function to initialize all picker buttons
+  function initializePickerButtons() {
+    // Initialize base selector picker button
+    const baseSelectorButton = document.querySelector(
+      '.selector-group .selection-mode'
+    );
+    const baseSelectorInput = document.querySelector('.selector-input');
+
+    if (baseSelectorButton) {
+      baseSelectorButton.addEventListener('click', () => {
+        startElementPicker(baseSelectorInput);
+      });
+    }
+
+    // Initialize field selector picker buttons
+    const fieldRows = document.querySelectorAll('.field-selectors .field-row');
+    fieldRows.forEach((row) => {
+      const pickerButton = row.querySelector('.selection-mode');
+      const selectorInput = row.querySelector('.field-selector');
+
+      if (pickerButton && selectorInput) {
+        pickerButton.addEventListener('click', () => {
+          startElementPicker(selectorInput);
+        });
+      }
+    });
+  }
 });
