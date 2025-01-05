@@ -1,4 +1,19 @@
 document.addEventListener('DOMContentLoaded', function () {
+  // Initialize i18n strings first, before any other operations
+  function initializeI18nStrings() {
+    // Update page title and main heading
+    document.title = chrome.i18n.getMessage('extName');
+
+    // Replace all HTML elements that contain i18n keys
+    document.body.innerHTML = document.body.innerHTML.replace(
+      /__MSG_(\w+)__/g,
+      (match, key) => chrome.i18n.getMessage(key)
+    );
+  }
+
+  // Call initializeI18n immediately
+  initializeI18nStrings();
+
   // DOM Elements
   const parseButton = document.getElementById('parseButton');
   const statusElement = document.getElementById('status');
@@ -17,13 +32,21 @@ document.addEventListener('DOMContentLoaded', function () {
   let lastPickedSelector = null;
 
   // Utility Functions
-  function showMessage(message, isError = false) {
+  function showMessage(messageKey, isError = false) {
+    let message;
+    if (messageKey.startsWith('Error: ')) {
+      // Handle custom error messages
+      message = messageKey;
+    } else {
+      // Handle i18n message keys
+      message = chrome.i18n.getMessage(messageKey) || messageKey;
+    }
     statusElement.textContent = message;
     statusElement.className = 'status ' + (isError ? 'error' : 'success');
   }
 
-  function showStats(stats) {
-    statsElement.textContent = stats;
+  function showStats(count) {
+    statsElement.textContent = chrome.i18n.getMessage('statsFound', [count]);
   }
 
   async function injectScripts(tabId) {
@@ -58,32 +81,42 @@ document.addEventListener('DOMContentLoaded', function () {
   function addFieldRow() {
     const fieldRow = document.createElement('div');
     fieldRow.className = 'field-row';
-    fieldRow.innerHTML = `
-      <input type="text" placeholder="Field name" class="field-name" />
-      <input type="text" placeholder="Selector" class="field-selector" />
-      <button class="remove-field">Remove</button>
-    `;
+
+    // Create field name input
+    const fieldNameInput = document.createElement('input');
+    fieldNameInput.type = 'text';
+    fieldNameInput.className = 'field-name';
+    fieldNameInput.placeholder = chrome.i18n.getMessage('fieldNamePlaceholder');
+
+    // Create field selector input
+    const fieldSelectorInput = document.createElement('input');
+    fieldSelectorInput.type = 'text';
+    fieldSelectorInput.className = 'field-selector';
+    fieldSelectorInput.placeholder = chrome.i18n.getMessage(
+      'selectorPlaceholder'
+    );
+
+    // Create remove button
+    const removeButton = document.createElement('button');
+    removeButton.className = 'remove-field';
+    removeButton.textContent = chrome.i18n.getMessage('removeField');
+
+    // Add elements to field row
+    fieldRow.appendChild(fieldNameInput);
+    fieldRow.appendChild(fieldSelectorInput);
+    fieldRow.appendChild(removeButton);
+
     fieldSelectors.appendChild(fieldRow);
 
     // Add remove functionality
-    const removeButton = fieldRow.querySelector('.remove-field');
-    if (removeButton) {
-      removeButton.addEventListener('click', () => {
-        fieldRow.remove();
-        saveState();
-      });
-    }
+    removeButton.addEventListener('click', () => {
+      fieldRow.remove();
+      saveState();
+    });
 
     // Add change listeners to inputs
-    const fieldName = fieldRow.querySelector('.field-name');
-    const fieldSelector = fieldRow.querySelector('.field-selector');
-
-    if (fieldName) {
-      fieldName.addEventListener('change', saveState);
-    }
-    if (fieldSelector) {
-      fieldSelector.addEventListener('change', saveState);
-    }
+    fieldNameInput.addEventListener('change', saveState);
+    fieldSelectorInput.addEventListener('change', saveState);
 
     return fieldRow;
   }
@@ -225,11 +258,11 @@ document.addEventListener('DOMContentLoaded', function () {
     currentFields = null;
 
     if (!baseSelector || fields.length === 0) {
-      showMessage('Please enter base selector and at least one field', true);
+      showMessage('errorMissingSelectors', true);
       return;
     }
 
-    showMessage('Parsing...', false);
+    showMessage('statusParsing', false);
 
     try {
       const [tab] = await chrome.tabs.query({
@@ -249,24 +282,22 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         function (response) {
           if (chrome.runtime.lastError) {
-            showMessage(
-              'Error: Cannot access page. Please refresh the page and try again.',
-              true
-            );
+            showMessage('errorAccessPage', true);
             return;
           }
 
           if (response.error) {
-            showMessage(`Error: ${response.error}`, true);
+            showMessage('errorNoElements', true);
           } else {
-            showMessage('Successfully parsed data!');
-            showStats(`Found ${response.count} items`);
+            showMessage('statusSuccess', false);
+            showStats(response.count);
             displayResults(response.data, fields);
           }
         }
       );
     } catch (error) {
-      showMessage(`Error: ${error.message}`, true);
+      showMessage('errorAccessPage', true);
+      console.error('Parse error:', error);
     }
   });
 
@@ -335,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       // Validate base selector if picking a field
       if (isFieldSelector && !baseSelector) {
-        showMessage('Please select base element first', true);
+        showMessage('errorBaseSelector', true);
         return;
       }
 
@@ -364,9 +395,8 @@ document.addEventListener('DOMContentLoaded', function () {
         baseSelector: baseSelector,
       });
     } catch (error) {
-      showMessage('Error starting element picker', true);
+      showMessage('errorAccessPage', true);
       console.error('Picker error:', error);
-      // Restore popup visibility in case of error
       document.body.style.display = 'block';
     }
   }

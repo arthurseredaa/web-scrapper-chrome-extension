@@ -6,31 +6,36 @@
   </head>
   <body>
     <div class="container">
-      <h1>Web Scraper</h1>
+      <h1>__MSG_extName__</h1>
       <div id="content">
         <div class="selectors-container">
           <div class="selector-group">
             <input
               type="text"
               class="selector-input"
-              placeholder="Base selector (e.g. .user-card)"
+              placeholder="__MSG_baseSelectorPlaceholder__"
             />
             <div class="field-selectors"></div>
-            <button class="add-field">+ Add Field</button>
+            <button class="add-field">__MSG_addField__</button>
           </div>
-          <button id="parseButton">Parse Data</button>
+          <button id="parseButton">__MSG_parseData__</button>
         </div>
         <div id="result" class="result-area">
           <div id="status" class="status"></div>
           <div id="stats" class="stats"></div>
-          <div class="download-buttons">
-            <button id="downloadCsv" class="download-btn" disabled>CSV</button>
-            <button id="downloadJson" class="download-btn" disabled>
-              JSON
-            </button>
-            <button id="downloadExcel" class="download-btn" disabled>
-              Excel
-            </button>
+          <div class="download-section">
+            <label for="download-buttons">__MSG_downloadAs__</label>
+            <div class="download-buttons" id="download-buttons">
+              <button id="downloadCsv" class="download-btn" disabled>
+                CSV
+              </button>
+              <button id="downloadJson" class="download-btn" disabled>
+                JSON
+              </button>
+              <button id="downloadExcel" class="download-btn" disabled>
+                Excel
+              </button>
+            </div>
           </div>
           <div id="parsed-data" class="parsed-data">
             <table id="results-table" class="results-table">

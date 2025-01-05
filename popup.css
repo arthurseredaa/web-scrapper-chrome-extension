@@ -120,7 +120,7 @@ h1 {
 }
 
 .selector-input {
-  width: 100%;
+  width: calc(100% - 20px);
   padding: 8px;
   margin-bottom: 10px;
   border: 1px solid #ccc;
@@ -201,4 +201,15 @@ h1 {
 .download-btn:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
+}
+
+.download-section {
+  margin: 10px 0;
+}
+
+.download-section label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+  color: #111827;
 }

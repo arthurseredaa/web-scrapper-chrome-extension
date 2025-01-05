@@ -1,0 +1,71 @@
+{
+  "extName": {
+    "message": "ScrapeMate",
+    "description": "The name of the extension"
+  },
+  "extDescription": {
+    "message": "Web scraping tool with customizable selectors. Extract data from web pages and export to CSV, JSON, or Excel formats.",
+    "description": "The description of the extension"
+  },
+  "addField": {
+    "message": "+ Add Field",
+    "description": "Button text to add a new field"
+  },
+  "parseData": {
+    "message": "Parse Data",
+    "description": "Button text to start parsing data"
+  },
+  "downloadAs": {
+    "message": "Download Data As:",
+    "description": "Label for download options"
+  },
+  "baseSelectorPlaceholder": {
+    "message": "Base selector (e.g. .user-card)",
+    "description": "Placeholder text for base selector input"
+  },
+  "fieldNamePlaceholder": {
+    "message": "Field name",
+    "description": "Placeholder text for field name input"
+  },
+  "selectorPlaceholder": {
+    "message": "Selector",
+    "description": "Placeholder text for selector input"
+  },
+  "removeField": {
+    "message": "Remove",
+    "description": "Button text to remove a field"
+  },
+  "errorNoElements": {
+    "message": "No elements found with the base selector",
+    "description": "Error message when no elements are found"
+  },
+  "errorAccessPage": {
+    "message": "Error: Cannot access page. Please refresh the page and try again.",
+    "description": "Error message when page cannot be accessed"
+  },
+  "errorBaseSelector": {
+    "message": "Please select base element first",
+    "description": "Error message when base selector is missing"
+  },
+  "errorMissingSelectors": {
+    "message": "Please enter base selector and at least one field",
+    "description": "Error message when selectors are missing"
+  },
+  "statusParsing": {
+    "message": "Parsing...",
+    "description": "Status message while parsing"
+  },
+  "statusSuccess": {
+    "message": "Successfully parsed data!",
+    "description": "Status message after successful parsing"
+  },
+  "statsFound": {
+    "message": "Found $COUNT$ items",
+    "description": "Stats message showing number of items found",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  }
+}
